@@ -1,42 +1,38 @@
+import { postResolvers } from './resources/post/post.resolvers';
+import { commentResolvers } from './resources/comment/comment.resolvers';
+import { merge } from 'lodash';
 import { makeExecutableSchema } from 'graphql-tools';
 
 
-const users: any[] = [
-    {
-        id: 1,
-        name: 'thiago',
-        email: 'thiago@email.com'
-    }
-]
+import { Query } from './query';
+import { Mutation } from './Mutation';
 
-const typeDefs = `
-    type User{
-        id: ID!
-        name: String!
-        email: String!
-    }
+import { commentTypes } from './resources/comment/comment.schema';
+import { postTypes } from './resources/post/post.schema';
+import { userTypes } from './resources/user/user.schema';
+import { userResolvers } from './resources/user/user.resolvers';
 
-    type Query {
-        allUsers: [User!]!
-    }
-
-    type Mutation {
-        createUser(name: String!, email: String!): User
+const resolvers = merge(
+    commentResolvers,
+    postResolvers,
+    userResolvers
+);
+const SchemaDefinition = `
+    type Schema {
+        query: Query
+        mutation: Mutation
     }
 
 `;
 
-const resolvers = {
-    Query: {
-        allUsers: () => users
-    },
-    Mutation: {
-        createUser: (parent, args) => {
-            const newUser = Object.assign({ id: users.length + 1 }, args);
-            users.push(newUser);
-            return newUser;
-        }
-    }
-};
-
-export default makeExecutableSchema({ typeDefs, resolvers });
+export default makeExecutableSchema({
+    typeDefs: [
+        SchemaDefinition,
+        Query,
+        Mutation,
+        commentTypes,
+        postTypes,
+        userTypes
+    ],
+    resolvers
+});
