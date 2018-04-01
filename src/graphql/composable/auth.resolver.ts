@@ -1,3 +1,4 @@
+import { verifyTokenResolver } from './verify-token.resolver';
 import { GraphQLFieldResolver } from "graphql";
 
 import { ComposableResolver } from "./composable.resolver";
@@ -13,3 +14,5 @@ export const authResolver: ComposableResolver<any, ResolverContext> =
             throw new Error('Sem autorização! Token não fornecido.');
         }
     };
+
+export const authResolvers = [authResolver, verifyTokenResolver];

@@ -10,6 +10,12 @@ let db = null;
 if (!db) {
     db = {};
 
+    const operatiosAliases = {
+        $in: Sequelize.Op.in
+    };
+
+    config = Object.assign({ operatiosAliases }, config);
+
     const sequelize: Sequelize.Sequelize = new Sequelize(
         config.database,
         config.username,

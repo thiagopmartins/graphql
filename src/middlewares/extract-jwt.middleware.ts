@@ -10,7 +10,7 @@ export const extractJwtMiddleware = (): RequestHandler => {
     return (req: Request, res: Response, next: NextFunction): void => {
 
         let authorization: string = req.get('authorization');
-        let token: string = authorization ? authorization.split(/\s/)[1] : undefined;
+        let token: string = authorization ? authorization.split(' ')[1] : undefined;
 
         req['context'] = {};
         req['context']['authorization'] = authorization;
