@@ -1,46 +1,54 @@
-import { AuthUser } from './../../../interfaces/AuthUserInterface';
-import { handleError, throwError } from './../../../utils/utils';
-import { Transaction } from 'sequelize';
-import { PostInstance } from './../../../models/PostModel';
+import * as graphqlFields from 'graphql-fields';
 import { GraphQLResolveInfo } from 'graphql';
-import { DbConnection } from '../../../interfaces/DbConnectionInterface';
-import { compose } from '../../composable/composable.resolver';
+import { Transaction } from 'sequelize';
+
+import { AuthUser } from './../../../interfaces/AuthUserInterface';
 import { authResolvers } from '../../composable/auth.resolver';
+import { compose } from '../../composable/composable.resolver';
+import { DbConnection } from '../../../interfaces/DbConnectionInterface';
+import { DataLoaders } from './../../../interfaces/DataLoadersInterface';
+import { handleError, throwError } from './../../../utils/utils';
+import { PostInstance } from './../../../models/PostModel';
+import { ResolverContext } from '../../../interfaces/ResolverContextInterface';
 export const postResolvers = {
 
     Post: {
-        author: (post, args, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
-            return db.User
-                .findById(post.get('author'))
+        author: (post, args, { db, dataloaders: { userLoader } }: { db: DbConnection, dataloaders: DataLoaders }, info: GraphQLResolveInfo) => {
+            return userLoader
+                .load({ key: post.get('author'), info })
                 .catch(handleError);
-
         },
 
-        comments: (post, { first = 10, offset = 0 }, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
-            return db.Comment
+        comments: (post, { first = 10, offset = 0 }, context: ResolverContext, info: GraphQLResolveInfo) => {
+            return context.db.Comment
                 .findAll({
                     where: { post: post.get('id') },
                     limit: first,
-                    offset: offset
+                    offset: offset,
+                    attributes: context.requestedfields.getFields(info)
                 }).catch(handleError);
         },
     },
 
     Query: {
-        posts: (parent, { first = 10, offset = 0 }, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
-            return db.Post
+        posts: (parent, { first = 10, offset = 0 }, context: ResolverContext, info: GraphQLResolveInfo) => {
+            console.log(Object.keys(graphqlFields(info)));
+            return context.db.Post
                 .findAll({
                     limit: first,
-                    offset: offset
+                    offset: offset,
+                    attributes: context.requestedfields.getFields(info, { keep: ['id'], exclude: ['comments'] })
                 }).catch(handleError);
         },
 
-        post: (parent, { id }, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
+        post: (parent, { id }, context: ResolverContext, info: GraphQLResolveInfo) => {
             id = parseInt(id);
-            return db.Post
-                .findById(id)
+            return context.db.Post
+                .findById(id, {
+                    attributes: context.requestedfields.getFields(info, { keep: ['id'], exclude: ['comments'] })
+                })
                 .then((post: PostInstance) => {
-                    throwError (!post, `Post id ${id} não foi encontrado!`);
+                    throwError(!post, `Post id ${id} não foi encontrado!`);
                     return post;
                 })
                 .catch(handleError);
@@ -63,8 +71,8 @@ export const postResolvers = {
                 return db.Post
                     .findById(id)
                     .then((post: PostInstance) => {
-                        throwError (!post, `Post id ${id} não foi encontrado!`);
-                        throwError (post.get('author') != authUser.id, `Não autorizado, somente é possível alterar posts que você criou!`);
+                        throwError(!post, `Post id ${id} não foi encontrado!`);
+                        throwError(post.get('author') != authUser.id, `Não autorizado, somente é possível alterar posts que você criou!`);
                         input.author = authUser.id;
                         return post.update(input, { transaction: t });
                     });
@@ -77,8 +85,8 @@ export const postResolvers = {
                 return db.Post
                     .findById(id)
                     .then((post: PostInstance) => {
-                        throwError (!post, `Post id ${id} não foi encontrado!`);
-                        throwError (post.get('author') != authUser.id, `Não autorizado, somente é possível deletar posts que você criou!`);
+                        throwError(!post, `Post id ${id} não foi encontrado!`);
+                        throwError(post.get('author') != authUser.id, `Não autorizado, somente é possível deletar posts que você criou!`);
                         return post.destroy({ transaction: t })
                             .then(post => !!post);
                     });

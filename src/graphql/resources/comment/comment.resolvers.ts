@@ -6,32 +6,35 @@ import { GraphQLResolveInfo } from 'graphql';
 import { Transaction } from 'sequelize';
 import { compose } from '../../composable/composable.resolver';
 import { authResolvers } from '../../composable/auth.resolver';
+import { DataLoaders } from '../../../interfaces/DataLoadersInterface';
+import { RequestedFields } from '../../ast/RequestedFields';
 export const commentResolvers = {
 
     Comment: {
 
-        user: (comment, args, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
-            return db.User
-                .findById(comment.get('user'))
+        user: (comment, args, { db, dataloaders: { userLoader } }: { db: DbConnection, dataloaders: DataLoaders }, info: GraphQLResolveInfo) => {
+            return userLoader
+                .load({ key: comment.get('user'), info })
                 .catch(handleError);
         },
 
-        post: (comment, args, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
-            return db.Post
-                .findById(comment.get('post'))
+        post: (comment, args, { db, dataloaders: { postLoader } }: { db: DbConnection, dataloaders: DataLoaders }, info: GraphQLResolveInfo) => {
+            return postLoader
+                .load({ key: comment.get('post'), info })
                 .catch(handleError);
         }
     },
 
     Query: {
 
-        commentsByPost: (parent, { postId, first = 10, offset = 0 }, { db }: { db: DbConnection }, info: GraphQLResolveInfo) => {
+        commentsByPost: (parent, { postId, first = 10, offset = 0 }, { db, requestedFields }: { db: DbConnection, requestedFields: RequestedFields }, info: GraphQLResolveInfo) => {
             postId = parseInt(postId);
             return db.Comment
                 .findAll({
                     where: { post: postId },
                     limit: first,
-                    offset: offset
+                    offset: offset,
+                    attributes: requestedFields.getFields(info)
                 })
                 .catch(handleError);
         }
@@ -45,7 +48,7 @@ export const commentResolvers = {
                 return db.Comment
                     .create(input, { transaction: t });
             })
-            .catch(handleError);
+                .catch(handleError);
         }),
 
         updateComment: compose(...authResolvers)((parent, { id, input }, { db, authUser }: { db: DbConnection, authUser: AuthUser }, info: GraphQLResolveInfo) => {
@@ -54,8 +57,8 @@ export const commentResolvers = {
                 return db.Comment
                     .findById(id)
                     .then((comment: CommentInstance) => {
-                        throwError (!comment, `Comentario id ${id} não foi encontrado!`);
-                        throwError (comment.get('user') != authUser.id, `Não autorizado, somente é possível alterar comentários que você criou!`);
+                        throwError(!comment, `Comentario id ${id} não foi encontrado!`);
+                        throwError(comment.get('user') != authUser.id, `Não autorizado, somente é possível alterar comentários que você criou!`);
                         input.user = authUser.id;
                         return comment.update(input, { transaction: t });
                     });
@@ -68,12 +71,12 @@ export const commentResolvers = {
                 return db.Comment
                     .findById(id)
                     .then((comment: CommentInstance) => {
-                        throwError (!comment, `Comentario id ${id} não foi encontrado!`);
-                        throwError (comment.get('user') != authUser.id, `Não autorizado, somente é possível deletar comentários que você criou!`);
+                        throwError(!comment, `Comentario id ${id} não foi encontrado!`);
+                        throwError(comment.get('user') != authUser.id, `Não autorizado, somente é possível deletar comentários que você criou!`);
                         return comment.destroy({ transaction: t })
                             .then(comment => !!comment);
                     });
             }).catch(handleError);
-        })       
+        })
     }
 };
