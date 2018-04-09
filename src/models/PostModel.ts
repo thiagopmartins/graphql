@@ -8,7 +8,7 @@ export interface PostAttributes {
     title?: string;
     content?: string;
     photo?: string;
-    author?: string;
+    author?: number;
     createdAt?: string;
     updatedAt?: string;
 }

@@ -32,7 +32,6 @@ export const postResolvers = {
 
     Query: {
         posts: (parent, { first = 10, offset = 0 }, context: ResolverContext, info: GraphQLResolveInfo) => {
-            console.log(Object.keys(graphqlFields(info)));
             return context.db.Post
                 .findAll({
                     limit: first,
